@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance Register — BSCS Roll Call</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  :root {
+    --board: #1f3d2b;
+    --board-dark: #17301f;
+    --chalk: #f0ede4;
+    --chalk-dim: #9fa696;
+    --chalk-yellow: #e8c468;
+    --pen-red: #c1443c;
+    --pen-green: #6b9e78;
+    --frame: #4a3626;
+    --frame-light: #6b4f37;
+    --present-bg: rgba(107,158,120,0.15);
+    --absent-bg: rgba(193,68,60,0.15);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: var(--frame);
+    background-image:
+      linear-gradient(90deg, rgba(0,0,0,0.15) 0px, transparent 3px),
+      linear-gradient(var(--frame-light), var(--frame));
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--chalk);
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px 64px;
+  }
+
+  .board {
+    width: 100%;
+    max-width: 960px;
+    background: var(--board);
+    border: 14px solid var(--frame-light);
+    border-radius: 4px;
+    box-shadow:
+      inset 0 0 60px rgba(0,0,0,0.45),
+      0 20px 40px rgba(0,0,0,0.4);
+    padding: 40px 36px 48px;
+    position: relative;
+  }
+  .board::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 3px 3px;
+    pointer-events: none;
+    border-radius: 4px;
+  }
+
+  header { text-align: center; margin-bottom: 32px; }
+  .eyebrow {
+    font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+    color: var(--chalk-dim); margin-bottom: 6px;
+  }
+  h1 {
+    font-family: 'Kalam', cursive; font-weight: 700; font-size: 42px;
+    color: var(--chalk); text-shadow: 0 0 14px rgba(240,237,228,0.15);
+  }
+  .subtitle { font-size: 13px; color: var(--chalk-dim); margin-top: 6px; }
+
+  .chalk-rule {
+    border: none; border-top: 2px dashed rgba(240,237,228,0.2);
+    margin: 28px 0;
+  }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    margin-bottom: 28px; justify-content: center;
+  }
+  .stat-pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 18px; border-radius: 20px;
+    font-size: 13px; font-weight: 600;
+    border: 1px solid rgba(240,237,228,0.15);
+    background: rgba(240,237,228,0.04);
+  }
+  .stat-pill i { font-size: 14px; }
+  .stat-pill .stat-num { font-size: 18px; font-weight: 700; }
+  .stat-pill.total { color: var(--chalk); }
+  .stat-pill.present-stat { color: var(--pen-green); }
+  .stat-pill.absent-stat { color: var(--pen-red); }
+  .stat-pill.rate-stat { color: var(--chalk-yellow); }
+
+  /* ── Index card (add student) ── */
+  .card {
+    background: #f5f0dd; color: #2a2a1f;
+    padding: 20px 22px; border-radius: 2px;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+    transform: rotate(-0.6deg);
+    margin-bottom: 32px; position: relative;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .card::before {
+    content: ""; position: absolute; top: -10px; left: 50%;
+    transform: translateX(-50%) rotate(3deg);
+    width: 70px; height: 22px;
+    background: rgba(232,196,104,0.55);
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+  .card h2 {
+    font-family: 'Kalam', cursive; font-size: 20px;
+    margin: 0 0 14px; color: #2a2a1f;
+  }
+  .card-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .field { flex: 1; min-width: 130px; display: flex; flex-direction: column; gap: 4px; }
+  .field label {
+    font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #5a5540;
+  }
+  .field input {
+    font-family: 'IBM Plex Mono', monospace; font-size: 14px;
+    padding: 9px 10px; border: 1px solid #b9b191; border-radius: 2px;
+    background: #fffdf6; color: #2a2a1f; transition: border-color .15s;
+  }
+  .field input:focus { outline: none; border-color: var(--pen-green); box-shadow: 0 0 0 2px rgba(107,158,120,0.25); }
+
+  /* ── Buttons ── */
+  .btn {
+    font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 13px;
+    letter-spacing: 0.5px; border: none; border-radius: 2px;
+    padding: 10px 18px; cursor: pointer;
+    transition: transform 0.12s, filter 0.12s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:active { transform: scale(0.97); }
+  .btn-chalk { background: var(--pen-green); color: #10231a; }
+  .btn-outline {
+    background: transparent; color: var(--chalk);
+    border: 1px solid var(--chalk-dim);
+  }
+  .btn-outline:hover { border-color: var(--chalk); }
+  .btn-danger-outline {
+    background: transparent; color: var(--pen-red);
+    border: 1px solid var(--pen-red);
+  }
+  .btn-danger-outline:hover { background: rgba(193,68,60,0.15); }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 12px; margin-bottom: 16px;
+  }
+  .toolbar h2 {
+    font-family: 'Kalam', cursive; font-size: 22px; margin: 0;
+  }
+  .toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .count-tag { font-size: 12px; color: var(--chalk-dim); }
+
+  /* ── Date nav ── */
+  .date-nav {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px; justify-content: center;
+  }
+  .date-nav .date-display {
+    font-family: 'Kalam', cursive; font-size: 20px;
+    color: var(--chalk-yellow); min-width: 220px; text-align: center;
+  }
+  .date-nav .btn { padding: 8px 14px; font-size: 12px; }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th {
+    text-align: left; padding: 8px 10px;
+    border-bottom: 2px solid var(--chalk-dim);
+    color: var(--chalk-yellow); font-weight: 600;
+    letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px;
+  }
+  tbody tr {
+    border-bottom: 1px dashed rgba(240,237,228,0.15);
+    transition: background .15s;
+  }
+  tbody tr:hover { background: rgba(240,237,228,0.03); }
+  tbody tr.row-present { background: var(--present-bg); }
+  tbody tr.row-absent { background: var(--absent-bg); }
+  tbody td { padding: 10px; vertical-align: middle; }
+  .id-cell { color: var(--chalk-dim); width: 70px; }
+  .name-cell { font-weight: 500; }
+
+  .att-count {
+    display: inline-block; min-width: 28px; text-align: center;
+    padding: 2px 10px; border: 1px solid var(--chalk-dim);
+    border-radius: 20px; font-size: 12px;
+  }
+
+  .mark-btns { display: flex; gap: 8px; }
+  .stamp {
+    width: 32px; height: 32px; border-radius: 50%; border: 2px solid;
+    background: transparent; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+    transition: transform .12s, background .12s;
+  }
+  .stamp:hover { transform: scale(1.15); }
+  .stamp:active { transform: scale(0.9); }
+  .stamp.present { border-color: var(--pen-green); color: var(--pen-green); }
+  .stamp.absent { border-color: var(--pen-red); color: var(--pen-red); }
+  .stamp svg { width: 16px; height: 16px; }
+  .stamp path { stroke-dasharray: 40; stroke-dashoffset: 40; }
+  .stamp.marked path { animation: draw .35s ease forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+
+  .row-actions { display: flex; gap: 8px; align-items: center; }
+  .edit-att {
+    width: 50px; font-family: 'IBM Plex Mono', monospace;
+    background: transparent; border: none;
+    border-bottom: 1px solid var(--chalk-dim);
+    color: var(--chalk); font-size: 13px; text-align: center; padding: 2px 0;
+  }
+  .edit-att:focus { outline: none; border-color: var(--chalk-yellow); }
+  .delete-btn {
+    background: none; border: none; color: var(--chalk-dim);
+    cursor: pointer; font-size: 12px; text-decoration: underline; padding: 0;
+  }
+  .delete-btn:hover { color: var(--pen-red); }
+
+  .empty-state {
+    text-align: center; padding: 40px 0;
+    color: var(--chalk-dim); font-family: 'Kalam', cursive; font-size: 18px;
+  }
+
+  /* ── Toast ── */
+  .toast-wrap {
+    position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast {
+    padding: 12px 20px; border-radius: 4px;
+    font-size: 13px; font-weight: 600;
+    background: var(--chalk); color: var(--board);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: toastIn .25s ease;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.error { background: var(--pen-red); color: #fff; }
+  .toast.success { background: var(--pen-green); color: #10231a; }
+  @keyframes toastIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+  /* ── Search ── */
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(240,237,228,0.06); border: 1px solid rgba(240,237,228,0.15);
+    border-radius: 20px; padding: 0 14px; max-width: 260px;
+  }
+  .search-box i { color: var(--chalk-dim); font-size: 13px; }
+  .search-box input {
+    background: transparent; border: none; color: var(--chalk);
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+    padding: 9px 0; width: 100%; outline: none;
+  }
+  .search-box input::placeholder { color: var(--chalk-dim); }
+
+  footer {
+    text-align: center; margin-top: 30px; font-size: 11px;
+    color: var(--chalk-dim); letter-spacing: 0.5px;
+  }
+
+  @media (max-width: 600px) {
+    h1 { font-size: 30px; }
+    .board { padding: 24px 16px 32px; border-width: 10px; }
+    table { font-size: 12px; }
+    .stat-pill { padding: 8px 12px; font-size: 11px; }
+    .stat-pill .stat-num { font-size: 15px; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .search-box { max-width: 100%; }
+    .date-nav .date-display { font-size: 16px; min-width: auto; }
+    .toolbar-actions { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="board">
+  <header>
+    <p class="eyebrow">BSCS &middot; Roll No. Register</p>
+    <h1><i class="fa-solid fa-book-open" style="font-size:36px;margin-right:8px;opacity:0.7;"></i>Attendance Register</h1>
+    <p class="subtitle">Mark it, track it, keep the roll honest.</p>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-pill total"><i class="fa-solid fa-users"></i> <span class="stat-num" id="statTotal">0</span> Total</div>
+    <div class="stat-pill present-stat"><i class="fa-solid fa-circle-check"></i> <span class="stat-num" id="statPresent">0</span> Present Today</div>
+    <div class="stat-pill absent-stat"><i class="fa-solid fa-circle-xmark"></i> <span class="stat-num" id="statAbsent">0</span> Absent Today</div>
+    <div class="stat-pill rate-stat"><i class="fa-solid fa-percent"></i> <span class="stat-num" id="statRate">0%</span> Avg Rate</div>
+  </div>
+
+  <!-- Add student card -->
+  <div class="card">
+    <h2><i class="fa-solid fa-plus" style="font-size:16px;margin-right:4px;"></i> New Entry</h2>
+    <div class="card-row">
+      <div class="field">
+        <label for="sid">Student ID</label>
+        <input type="number" id="sid" placeholder="e.g. 24101">
+      </div>
+      <div class="field" style="flex:2;">
+        <label for="sname">Full Name</label>
+        <input type="text" id="sname" placeholder="e.g. Ayesha Khan">
+      </div>
+      <button class="btn btn-chalk" onclick="addStudent()"><i class="fa-solid fa-user-plus"></i> Add</button>
+    </div>
+  </div>
+
+  <hr class="chalk-rule">
+
+  <!-- Date navigation -->
+  <div class="date-nav">
+    <button class="btn btn-outline" onclick="changeDate(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+    <div class="date-display" id="dateDisplay"></div>
+    <button class="btn btn-outline" onclick="changeDate(1)"><i class="fa-solid fa-chevron-right"></i></button>
+    <button class="btn btn-outline" onclick="goToToday()" style="font-size:11px;">Today</button>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div style="display:flex;align-items:baseline;gap:12px;">
+      <h2>Roll</h2>
+      <span class="count-tag" id="countTag">0 students</span>
+    </div>
+    <div class="toolbar-actions">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="Search name or ID..." oninput="render()">
+      </div>
+      <button class="btn btn-outline" onclick="markAllPresent()" title="Mark all present"><i class="fa-solid fa-check-double"></i> All Present</button>
+      <button class="btn btn-outline" onclick="exportCSV()" title="Export CSV"><i class="fa-solid fa-download"></i> Export</button>
+      <button class="btn btn-danger-outline" onclick="clearAll()" title="Clear all students"><i class="fa-solid fa-trash"></i> Clear</button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Present</th>
+          <th>Mark</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="rollBody"></tbody>
+    </table>
+  </div>
+  <div class="empty-state" id="emptyState">
+    <i class="fa-solid fa-clipboard-list" style="font-size:36px;display:block;margin-bottom:12px;opacity:0.4;"></i>
+    The register is empty. Add your first student above.
+  </div>
+
+  <footer>
+    <span id="storageLabel">Stored locally in this browser</span> &mdash; each device keeps its own register.
+  </footer>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+(function() {
+  const STORAGE_KEY = 'attendance-register-v2';
+  const API_BASE = '/api';
+  let students = [];
+  let currentDate = todayStr();
+  let usingAPI = false;
+
+  // ── Date helpers ──
+  function todayStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function formatDate(str) {
+    const d = new Date(str + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  }
+  function changeDate(delta) {
+    const d = new Date(currentDate + 'T00:00:00');
+    d.setDate(d.getDate() + delta);
+    currentDate = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    render();
+  }
+  function goToToday() { currentDate = todayStr(); render(); }
+
+  // ── API layer ──
+  async function apiCall(method, endpoint, body) {
+    try {
+      const opts = { method, headers: { 'Content-Type': 'application/json' } };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(API_BASE + endpoint, opts);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch { return null; }
+  }
+
+  async function initDatabase() {
+    const data = await apiCall('GET', '/students');
+    if (data && Array.isArray(data.students)) {
+      students = data.students;
+      usingAPI = true;
+      const lbl = document.getElementById('storageLabel');
+      if (lbl) lbl.textContent = 'Synced with cloud server';
+      toast('Connected to cloud server', 'success');
+    } else {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      students = stored ? JSON.parse(stored) : [];
+      usingAPI = false;
+    }
+    render();
+  }
+
+  function saveLocal() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
+  }
+
+  // ── Core operations ──
+  window.addStudent = async function() {
+    const idInput = document.getElementById('sid');
+    const nameInput = document.getElementById('sname');
+    const id = idInput.value.trim();
+    const name = nameInput.value.trim();
+    if (!id || !name) { toast('Enter both ID and name.', 'error'); return; }
+    if (students.some(s => String(s.id) === id)) { toast('That ID already exists.', 'error'); return; }
+
+    const newStudent = { id, name, dates: {} };
+
+    if (usingAPI) {
+      const res = await apiCall('POST', '/students', { id, name });
+      if (!res || res.error) { toast(res?.error || 'Server error.', 'error'); return; }
+    }
+
+    students.push(newStudent);
+    if (!usingAPI) saveLocal();
+    idInput.value = ''; nameInput.value = ''; idInput.focus();
+    render();
+    toast('Student added!', 'success');
+  };
+
+  window.mark = async function(id, present) {
+    const s = students.find(s => String(s.id) === String(id));
+    if (!s) return;
+    if (!s.dates) s.dates = {};
+    s.dates[currentDate] = present ? 1 : 0;
+
+    if (usingAPI) {
+      await apiCall('POST', '/mark', { id, date: currentDate, present });
+    } else {
+      saveLocal();
+    }
+    render();
+
+    requestAnimationFrame(() => {
+      const btn = document.querySelector(`.stamp[data-id="${id}"][data-type="${present ? 'present' : 'absent'}"]`);
+      if (btn) { btn.classList.remove('marked'); void btn.offsetWidth; btn.classList.add('marked'); }
+    });
+  };
+
+  window.updateAttendance = async function(id, value) {
+    const s = students.find(s => String(s.id) === String(id));
+    if (!s) return;
+    const n = parseInt(value, 10);
+    if (isNaN(n) || n < 0) return;
+    if (!s.dates) s.dates = {};
+    s.dates[currentDate] = n > 0 ? 1 : 0;
+
+    if (usingAPI) {
+      await apiCall('POST', '/mark', { id, date: currentDate, present: n > 0 });
+    } else {
+      saveLocal();
+    }
+    render();
+  };
+
+  window.removeStudent = async function(id) {
+    if (!confirm('Remove this student?')) return;
+
+    if (usingAPI) {
+      await apiCall('DELETE', '/students/' + encodeURIComponent(id));
+    }
+
+    students = students.filter(s => String(s.id) !== String(id));
+    if (!usingAPI) saveLocal();
+    render();
+    toast('Student removed.', 'success');
+  };
+
+  window.markAllPresent = async function() {
+    if (students.length === 0) return;
+    students.forEach(s => { if (!s.dates) s.dates = {}; s.dates[currentDate] = 1; });
+
+    if (usingAPI) {
+      await apiCall('POST', '/mark-all', { date: currentDate, present: true });
+    } else {
+      saveLocal();
+    }
+    render();
+    toast('All marked present!', 'success');
+  };
+
+  window.clearAll = async function() {
+    if (!confirm('Remove ALL students? This cannot be undone.')) return;
+
+    if (usingAPI) {
+      await apiCall('DELETE', '/students');
+    }
+
+    students = [];
+    if (!usingAPI) saveLocal();
+    render();
+    toast('Register cleared.', 'success');
+  };
+
+  window.exportCSV = function() {
+    if (students.length === 0) { toast('Nothing to export.', 'error'); return; }
+    let csv = 'ID,Name';
+    const dates = Object.keys(students[0].dates || {}).sort();
+    dates.forEach(d => csv += ',' + d);
+    csv += ',Total Present\n';
+
+    students.forEach(s => {
+      csv += s.id + ',"' + s.name.replace(/"/g, '""') + '"';
+      dates.forEach(d => csv += ',' + (s.dates[d] || 0));
+      csv += ',' + getTotalPresent(s) + '\n';
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'attendance-' + currentDate + '.csv';
+    a.click();
+    toast('CSV exported!', 'success');
+  };
+
+  // ── Helpers ──
+  function getTotalPresent(s) {
+    return Object.values(s.dates || {}).filter(v => v === 1).length;
+  }
+
+  function getTodayStatus(s) {
+    if (!s.dates) return null;
+    if (currentDate in s.dates) return s.dates[currentDate] === 1;
+    return null;
+  }
+
+  function getOverallRate() {
+    if (students.length === 0) return 0;
+    let totalDays = 0, totalPresent = 0;
+    students.forEach(s => {
+      const days = Object.keys(s.dates || {}).length;
+      totalDays += days;
+      totalPresent += getTotalPresent(s);
+    });
+    return totalDays > 0 ? Math.round((totalPresent / totalDays) * 100) : 0;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ── Toast ──
+  function toast(msg, type) {
+    const wrap = document.getElementById('toastWrap');
+    const t = document.createElement('div');
+    t.className = 'toast ' + (type || '');
+    t.innerHTML = '<i class="fa-solid ' + (type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check') + '"></i> ' + msg;
+    wrap.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 2500);
+  }
+
+  // ── Render ──
+  window.render = function() {
+    const tbody = document.getElementById('rollBody');
+    const empty = document.getElementById('emptyState');
+    const countTag = document.getElementById('countTag');
+    const query = (document.getElementById('searchInput').value || '').toLowerCase();
+
+    document.getElementById('dateDisplay').textContent = formatDate(currentDate);
+
+    const filtered = students.filter(s => {
+      if (!query) return true;
+      return String(s.id).includes(query) || s.name.toLowerCase().includes(query);
+    });
+
+    countTag.textContent = students.length + ' student' + (students.length === 1 ? '' : 's');
+
+    // Stats
+    let presentToday = 0, absentToday = 0;
+    students.forEach(s => {
+      const st = getTodayStatus(s);
+      if (st === true) presentToday++;
+      else if (st === false) absentToday++;
+    });
+    document.getElementById('statTotal').textContent = students.length;
+    document.getElementById('statPresent').textContent = presentToday;
+    document.getElementById('statAbsent').textContent = absentToday;
+    document.getElementById('statRate').textContent = getOverallRate() + '%';
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    tbody.innerHTML = filtered.map(s => {
+      const status = getTodayStatus(s);
+      const rowClass = status === true ? 'row-present' : status === false ? 'row-absent' : '';
+      const totalPres = getTotalPresent(s);
+      const totalDays = Object.keys(s.dates || {}).length;
+      const tooltip = totalDays > 0 ? totalPres + '/' + totalDays + ' days present' : 'No attendance recorded yet';
+
+      return '<tr class="' + rowClass + '">' +
+        '<td class="id-cell">' + escapeHtml(String(s.id)) + '</td>' +
+        '<td class="name-cell">' + escapeHtml(s.name) + '</td>' +
+        '<td><span class="att-count" title="' + tooltip + '">' + totalPres + '/' + totalDays + '</span></td>' +
+        '<td><div class="mark-btns">' +
+          '<button class="stamp present' + (status === true ? ' marked' : '') + '" data-id="' + s.id + '" data-type="present" title="Mark present" onclick="mark(\'' + s.id + '\', true)">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M4 12l5 5L20 6"/></svg>' +
+          '</button>' +
+          '<button class="stamp absent' + (status === false ? ' marked' : '') + '" data-id="' + s.id + '" data-type="absent" title="Mark absent" onclick="mark(\'' + s.id + '\', false)">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>' +
+          '</button>' +
+        '</div></td>' +
+        '<td><div class="row-actions">' +
+          '<button class="delete-btn" onclick="removeStudent(\'' + s.id + '\')"><i class="fa-solid fa-trash" style="font-size:11px;"></i> remove</button>' +
+        '</div></td>' +
+      '</tr>';
+    }).join('');
+  };
+
+  // ── Keyboard shortcuts ──
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'n' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT') {
+      document.getElementById('sid').focus();
+      e.preventDefault();
+    }
+    if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+      document.getElementById('searchInput').focus();
+      e.preventDefault();
+    }
+  });
+
+  // Allow Enter to submit student
+  document.getElementById('sname').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') addStudent();
+  });
+  document.getElementById('sid').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('sname').focus();
+  });
+
+  // ── Init ──
+  initDatabase();
+})();
+</script>
+
+</body>
+</html>
