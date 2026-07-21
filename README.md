@@ -1,8 +1,6 @@
-make the attendance system easy to available for everyone by publishing with the help of vercel
+# BSCS Attendance Register System
 
-# 📋 BSCS Attendance Register System
-
-[![Vercel](https://vercelbadge.vercel.app/api/your-username/attendance-register)](https://attendance-register.vercel.app)
+[![Vercel](https://vercelbadge.vercel.app/api/abdul-basit-codes/attendance-register)](https://attendance-register.vercel.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
@@ -127,5 +125,5 @@ A beautiful, fully-functional attendance tracking system designed for BSCS class
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/your-username/attendance-register.git
+git clone https://github.com/abdul-basit-codes/attendance-register.git
 cd attendance-register
