@@ -388,6 +388,20 @@
     <div id="timetableBody" style="margin-top:16px;"></div>
   </div>
 
+  <!-- Announcements -->
+  <hr class="chalk-rule">
+  <div class="card" style="margin-top:20px;">
+    <h2><i class="fa-solid fa-bullhorn" style="font-size:16px;margin-right:4px;"></i> Class Announcements</h2>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+      <input type="text" id="annText" placeholder="Write an announcement..." style="padding:6px 10px;background:transparent;border:1px solid var(--chalk-dim);color:var(--chalk);border-radius:4px;font-family:'Kalam';flex:1;">
+      <select id="annPriority" style="padding:6px 10px;background:var(--board-dark);color:var(--chalk);border:1px solid var(--chalk-dim);border-radius:4px;">
+        <option value="info">Info</option><option value="important">Important</option><option value="urgent">Urgent</option>
+      </select>
+      <button class="btn btn-chalk" onclick="addAnnouncement()"><i class="fa-solid fa-bullhorn"></i> Post</button>
+    </div>
+    <div id="announcementsBody" style="margin-top:16px;"></div>
+  </div>
+
   <footer>
     <span id="storageLabel">Stored locally in this browser</span> &mdash; each device keeps its own register.
   </footer>
@@ -785,9 +799,33 @@
       }).join('') + '</tr></tbody></table>';
   }
 
+  // ── Announcements ──
+  let announcements = [];
+
+  window.addAnnouncement = function() {
+    const text = document.getElementById('annText').value.trim();
+    const priority = document.getElementById('annPriority').value;
+    if (!text) { toast('Type an announcement'); return; }
+    const colors = { info: 'var(--pen-green)', important: 'var(--chalk-yellow)', urgent: 'var(--pen-red)' };
+    announcements.unshift({ text, priority, date: new Date().toLocaleDateString(), color: colors[priority] });
+    localStorage.setItem('announcements', JSON.stringify(announcements));
+    document.getElementById('annText').value = '';
+    renderAnnouncements();
+    toast('Announcement posted');
+  };
+
+  function renderAnnouncements() {
+    const container = document.getElementById('announcementsBody');
+    const stored = localStorage.getItem('announcements');
+    announcements = stored ? JSON.parse(stored) : [];
+    if (!announcements.length) { container.innerHTML = '<p style="color:var(--chalk-dim);">No announcements yet.</p>'; return; }
+    container.innerHTML = announcements.map(a => '<div style="margin-bottom:8px;padding:8px 12px;border-left:3px solid ' + a.color + ';background:rgba(255,255,255,0.03);border-radius:0 4px 4px 0;"><strong style="color:' + a.color + ';">[' + a.priority.toUpperCase() + ']</strong> <span>' + a.text + '</span> <span style="font-size:11px;color:var(--chalk-dim);margin-left:8px;">' + a.date + '</span></div>').join('');
+  }
+
   // ── Init ──
   initDatabase();
   renderTimetable();
+  renderAnnouncements();
 })();
 </script>
 
