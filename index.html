@@ -362,6 +362,32 @@
     The register is empty. Add your first student above.
   </div>
 
+  <!-- Analytics Section -->
+  <hr class="chalk-rule">
+  <div class="card" id="analyticsCard" style="margin-top:20px;">
+    <h2><i class="fa-solid fa-chart-bar" style="font-size:16px;margin-right:4px;"></i> Attendance Analytics</h2>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;">
+      <button class="btn btn-outline" onclick="showAnalytics()"><i class="fa-solid fa-chart-pie"></i> Show Analytics</button>
+      <button class="btn btn-outline" onclick="exportFullReport()"><i class="fa-solid fa-file-pdf"></i> Full Report</button>
+    </div>
+    <div id="analyticsBody" style="margin-top:16px;"></div>
+  </div>
+
+  <!-- Class Timetable -->
+  <hr class="chalk-rule">
+  <div class="card" style="margin-top:20px;">
+    <h2><i class="fa-solid fa-calendar" style="font-size:16px;margin-right:4px;"></i> Weekly Timetable</h2>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+      <input type="text" id="ttSubject" placeholder="Subject name" style="padding:6px 10px;background:transparent;border:1px solid var(--chalk-dim);color:var(--chalk);border-radius:4px;font-family:'Kalam';">
+      <select id="ttDay" style="padding:6px 10px;background:var(--board-dark);color:var(--chalk);border:1px solid var(--chalk-dim);border-radius:4px;">
+        <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option>
+      </select>
+      <input type="text" id="ttTime" placeholder="e.g. 09:00-10:30" style="padding:6px 10px;background:transparent;border:1px solid var(--chalk-dim);color:var(--chalk);border-radius:4px;font-family:'Kalam';">
+      <button class="btn btn-chalk" onclick="addTimetableEntry()"><i class="fa-solid fa-plus"></i> Add</button>
+    </div>
+    <div id="timetableBody" style="margin-top:16px;"></div>
+  </div>
+
   <footer>
     <span id="storageLabel">Stored locally in this browser</span> &mdash; each device keeps its own register.
   </footer>
@@ -662,8 +688,106 @@
     if (e.key === 'Enter') document.getElementById('sname').focus();
   });
 
+  // ── Analytics ──
+  window.showAnalytics = function() {
+    const container = document.getElementById('analyticsBody');
+    if (!students.length) { container.innerHTML = '<p style="color:var(--chalk-dim);">No data to analyze.</p>'; return; }
+
+    const dates = Object.keys(students[0].attendance || {}).sort();
+    const totalDays = dates.length;
+    let totalPresent = 0, totalAbsences = 0;
+    const studentStats = students.map(s => {
+      const att = s.attendance || {};
+      const present = Object.values(att).filter(v => v === true).length;
+      const absent = Object.values(att).filter(v => v === false).length;
+      totalPresent += present;
+      totalAbsences += absent;
+      const rate = totalDays ? ((present / totalDays) * 100).toFixed(1) : 0;
+      return { name: s.name, present, absent, rate };
+    }).sort((a, b) => a.rate - b.rate);
+
+    const avgRate = students.length && totalDays ? ((totalPresent / (students.length * totalDays)) * 100).toFixed(1) : 0;
+    const best = studentStats[studentStats.length - 1];
+    const worst = studentStats[0];
+
+    container.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;">
+        <div style="text-align:center;padding:12px;border:1px solid var(--chalk-dim);border-radius:6px;">
+          <div style="font-size:24px;color:var(--chalk-yellow);font-weight:700;">${totalDays}</div>
+          <div style="font-size:11px;color:var(--chalk-dim);">Total Days Tracked</div>
+        </div>
+        <div style="text-align:center;padding:12px;border:1px solid var(--chalk-dim);border-radius:6px;">
+          <div style="font-size:24px;color:var(--pen-green);font-weight:700;">${totalPresent}</div>
+          <div style="font-size:11px;color:var(--chalk-dim);">Total Present</div>
+        </div>
+        <div style="text-align:center;padding:12px;border:1px solid var(--chalk-dim);border-radius:6px;">
+          <div style="font-size:24px;color:var(--pen-red);font-weight:700;">${totalAbsences}</div>
+          <div style="font-size:11px;color:var(--chalk-dim);">Total Absences</div>
+        </div>
+        <div style="text-align:center;padding:12px;border:1px solid var(--chalk-dim);border-radius:6px;">
+          <div style="font-size:24px;color:var(--chalk-yellow);font-weight:700;">${avgRate}%</div>
+          <div style="font-size:11px;color:var(--chalk-dim);">Class Average</div>
+        </div>
+      </div>
+      ${best ? '<p style="color:var(--pen-green);">Best: <strong>' + best.name + '</strong> (' + best.rate + '%)</p>' : ''}
+      ${worst && worst !== best ? '<p style="color:var(--pen-red);">Needs attention: <strong>' + worst.name + '</strong> (' + worst.rate + '%)</p>' : ''}
+      <table style="margin-top:12px;width:100%;"><thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>Rate</th></tr></thead><tbody>
+      ${studentStats.map(s => '<tr><td>' + s.name + '</td><td style="color:var(--pen-green);">' + s.present + '</td><td style="color:var(--pen-red);">' + s.absent + '</td><td style="color:var(--chalk-yellow);">' + s.rate + '%</td></tr>').join('')}
+      </tbody></table>
+    `;
+  };
+
+  window.exportFullReport = function() {
+    let csv = 'Student ID,Name';
+    const dates = students.length ? Object.keys(students[0].attendance || {}).sort() : [];
+    dates.forEach(d => csv += ',' + d);
+    csv += ',Total Present,Rate%\n';
+    students.forEach(s => {
+      csv += s.id + ',' + s.name;
+      let present = 0;
+      dates.forEach(d => { const v = (s.attendance || {})[d]; csv += ',' + (v === true ? 'P' : v === false ? 'A' : '-'); if (v === true) present++; });
+      csv += ',' + present + ',' + (dates.length ? ((present/dates.length)*100).toFixed(1) : '0') + '\n';
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'attendance-full-report.csv'; a.click();
+    URL.revokeObjectURL(url);
+    toast('Full report exported');
+  };
+
+  // ── Timetable ──
+  let timetable = [];
+
+  window.addTimetableEntry = function() {
+    const subject = document.getElementById('ttSubject').value.trim();
+    const day = document.getElementById('ttDay').value;
+    const time = document.getElementById('ttTime').value.trim();
+    if (!subject || !time) { toast('Fill subject and time'); return; }
+    timetable.push({ subject, day, time });
+    localStorage.setItem('timetable', JSON.stringify(timetable));
+    document.getElementById('ttSubject').value = '';
+    document.getElementById('ttTime').value = '';
+    renderTimetable();
+    toast('Timetable entry added');
+  };
+
+  function renderTimetable() {
+    const container = document.getElementById('timetableBody');
+    const stored = localStorage.getItem('timetable');
+    timetable = stored ? JSON.parse(stored) : [];
+    if (!timetable.length) { container.innerHTML = '<p style="color:var(--chalk-dim);">No timetable entries yet.</p>'; return; }
+
+    const days = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+    container.innerHTML = '<table style="width:100%;"><thead><tr>' + days.map(d => '<th>' + d + '</th>').join('') + '</tr></thead><tbody><tr>' +
+      days.map(d => {
+        const entries = timetable.filter(t => t.day === d);
+        return '<td style="vertical-align:top;">' + (entries.length ? entries.map(e => '<div style="margin-bottom:6px;padding:4px;border:1px solid var(--chalk-dim);border-radius:4px;font-size:12px;"><strong>' + e.subject + '</strong><br>' + e.time + '</div>').join('') : '<span style="color:var(--chalk-dim);">-</span>') + '</td>';
+      }).join('') + '</tr></tbody></table>';
+  }
+
   // ── Init ──
   initDatabase();
+  renderTimetable();
 })();
 </script>
 
