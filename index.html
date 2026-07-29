@@ -365,12 +365,27 @@
   <!-- Analytics Section -->
   <hr class="chalk-rule">
   <div class="card" id="analyticsCard" style="margin-top:20px;">
-    <h2><i class="fa-solid fa-chart-bar" style="font-size:16px;margin-right:4px;"></i> Attendance Analytics</h2>
+    <h2><i class="fa-solid fa-chart-bar"></i> Attendance Analytics</h2>
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;">
       <button class="btn btn-outline" onclick="showAnalytics()"><i class="fa-solid fa-chart-pie"></i> Show Analytics</button>
       <button class="btn btn-outline" onclick="exportFullReport()"><i class="fa-solid fa-file-pdf"></i> Full Report</button>
     </div>
     <div id="analyticsBody" style="margin-top:16px;"></div>
+  </div>
+
+  <!-- Top Students -->
+  <hr class="chalk-rule">
+  <div class="card" style="margin-top:20px;">
+    <h2><i class="fa-solid fa-trophy"></i> Top Students</h2>
+    <div id="topStudentsBody" style="margin-top:12px;"></div>
+  </div>
+
+  <!-- Attendance Alerts -->
+  <hr class="chalk-rule">
+  <div class="card" style="margin-top:20px;">
+    <h2><i class="fa-solid fa-triangle-exclamation"></i> Attendance Alerts</h2>
+    <p style="font-size:13px;color:var(--chalk-dim);margin-top:4px;">Students below 75% attendance rate</p>
+    <div id="alertsBody" style="margin-top:12px;"></div>
   </div>
 
   <!-- Class Timetable -->
@@ -822,10 +837,60 @@
     container.innerHTML = announcements.map(a => '<div style="margin-bottom:8px;padding:8px 12px;border-left:3px solid ' + a.color + ';background:rgba(255,255,255,0.03);border-radius:0 4px 4px 0;"><strong style="color:' + a.color + ';">[' + a.priority.toUpperCase() + ']</strong> <span>' + a.text + '</span> <span style="font-size:11px;color:var(--chalk-dim);margin-left:8px;">' + a.date + '</span></div>').join('');
   }
 
+  function renderTopStudents() {
+    const container = document.getElementById('topStudentsBody');
+    if (!container) return;
+    const students = getAllStudents();
+    const withRate = students.filter(s => s.days && s.days.length > 0).map(s => {
+      const p = s.days.filter(d => d.present).length;
+      const rate = (p / s.days.length * 100);
+      return { ...s, present: p, total: s.days.length, rate };
+    });
+    withRate.sort((a, b) => b.rate - a.rate);
+    const top = withRate.slice(0, 5);
+
+    if (!top.length) { container.innerHTML = '<p style="color:var(--chalk-dim);">No attendance data yet.</p>'; return; }
+
+    const medals = ['&#129351;', '&#129352;', '&#129353;'];
+    container.innerHTML = '<table><thead><tr><th>Rank</th><th>Name</th><th>Rate</th><th>Present</th><th>Total</th></tr></thead><tbody>' +
+      top.map((s, i) => '<tr><td style="font-size:18px;">' + (medals[i] || '#' + (i + 1)) + '</td><td>' + s.id + ' ' + s.name + '</td><td style="color:var(--pen-green);">' + s.rate.toFixed(1) + '%</td><td>' + s.present + '</td><td>' + s.total + '</td></tr>').join('') +
+      '</tbody></table>';
+  }
+
+  function renderAlerts() {
+    const container = document.getElementById('alertsBody');
+    if (!container) return;
+    const students = getAllStudents();
+    const alerts = students.filter(s => s.days && s.days.length > 0).map(s => {
+      const p = s.days.filter(d => d.present).length;
+      return { ...s, rate: (p / s.days.length * 100) };
+    }).filter(s => s.rate < 75).sort((a, b) => a.rate - b.rate);
+
+    if (!alerts.length) {
+      container.innerHTML = '<p style="color:var(--pen-green);"><i class="fa-solid fa-circle-check"></i> All students are above 75% attendance.</p>';
+      return;
+    }
+
+    container.innerHTML = alerts.map(s => {
+      const color = s.rate < 50 ? 'var(--pen-red)' : 'var(--chalk-yellow)';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-left:3px solid ' + color + ';margin-bottom:6px;background:rgba(255,255,255,0.03);border-radius:0 4px 4px 0;"><span>' + s.name + '</span><span style="color:' + color + ';font-weight:600;">' + s.rate.toFixed(1) + '%</span></div>';
+    }).join('');
+  }
+
+  // update existing render to include new sections
+  const origRender = window.render || function(){};
+  window.render = function() {
+    if (typeof origRender === 'function') origRender();
+    renderTopStudents();
+    renderAlerts();
+  };
+
   // ── Init ──
   initDatabase();
   renderTimetable();
   renderAnnouncements();
+  renderTopStudents();
+  renderAlerts();
 })();
 </script>
 
