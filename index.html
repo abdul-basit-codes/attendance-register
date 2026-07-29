@@ -388,6 +388,14 @@
     <div id="alertsBody" style="margin-top:12px;"></div>
   </div>
 
+  <!-- Subject Attendance -->
+  <hr class="chalk-rule">
+  <div class="card" style="margin-top:20px;">
+    <h2><i class="fa-solid fa-book"></i> Subject-wise Attendance</h2>
+    <p style="font-size:13px;color:var(--chalk-dim);margin-top:4px;">Attendance breakdown by subject</p>
+    <div id="subjectAttBody" style="margin-top:12px;"></div>
+  </div>
+
   <!-- Class Timetable -->
   <hr class="chalk-rule">
   <div class="card" style="margin-top:20px;">
@@ -877,12 +885,45 @@
     }).join('');
   }
 
+  function renderSubjectAttendance() {
+    const container = document.getElementById('subjectAttBody');
+    if (!container) return;
+    const students = getAllStudents();
+    const total = students.length;
+    if (!total) { container.innerHTML = '<p style="color:var(--chalk-dim);">No students yet.</p>'; return; }
+
+    const today = new Date().toISOString().slice(0,10);
+    const presentToday = students.filter(s => {
+      const last = s.days ? s.days.find(d => d.date === today) : null;
+      return last && last.present;
+    }).length;
+
+    // Estimate from timetable subjects
+    const stored = localStorage.getItem('timetable');
+    const subjects = stored ? JSON.parse(stored) : [];
+    const todayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
+    const todaySubjects = subjects.filter(s => s.day === todayName);
+
+    if (!todaySubjects.length) {
+      container.innerHTML = '<p style="color:var(--chalk-dim);">No subjects scheduled for today.</p>';
+      return;
+    }
+
+    container.innerHTML = '<table><thead><tr><th>Subject</th><th>Time</th><th>Attendance</th><th>Rate</th></tr></thead><tbody>' +
+      todaySubjects.map(sub => {
+        const rate = total > 0 ? (presentToday / total * 100) : 0;
+        return '<tr><td>' + sub.subject + '</td><td>' + sub.time + '</td><td>' + presentToday + '/' + total + '</td><td style="color:' + (rate >= 75 ? 'var(--pen-green)' : 'var(--pen-red)') + ';">' + rate.toFixed(0) + '%</td></tr>';
+      }).join('') +
+      '</tbody></table>';
+  }
+
   // update existing render to include new sections
   const origRender = window.render || function(){};
   window.render = function() {
     if (typeof origRender === 'function') origRender();
     renderTopStudents();
     renderAlerts();
+    renderSubjectAttendance();
   };
 
   // ── Init ──
@@ -891,6 +932,7 @@
   renderAnnouncements();
   renderTopStudents();
   renderAlerts();
+  renderSubjectAttendance();
 })();
 </script>
 
