@@ -415,6 +415,19 @@
     <div id="subjectAttBody" style="margin-top:12px;"></div>
   </div>
 
+  <!-- Calendar View -->
+  <hr class="chalk-rule">
+  <div class="card" style="margin-top:20px;">
+    <h2><i class="fa-solid fa-calendar-days"></i> Attendance Calendar</h2>
+    <p style="font-size:13px;color:var(--chalk-dim);margin-top:4px;">Monthly attendance grid — <span style="color:var(--pen-green);">&#9608; present</span> <span style="color:var(--pen-red);">&#9608; absent</span></p>
+    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+      <select id="calStudent" style="padding:6px 10px;border:1px solid var(--chalk-line);border-radius:4px;background:transparent;color:var(--chalk-white);font-size:13px;"></select>
+      <select id="calMonth" style="padding:6px 10px;border:1px solid var(--chalk-line);border-radius:4px;background:transparent;color:var(--chalk-white);font-size:13px;"></select>
+      <button class="btn btn-chalk btn-sm" onclick="renderCalendar()"><i class="fa-solid fa-rotate"></i> Show</button>
+    </div>
+    <div id="calendarBody" style="margin-top:12px;"></div>
+  </div>
+
   <!-- Class Timetable -->
   <hr class="chalk-rule">
   <div class="card" style="margin-top:20px;">
@@ -937,6 +950,49 @@
       '</tbody></table>';
   }
 
+  // ── Calendar View ──
+  function populateCalendarSelects() {
+    const studentSel = document.getElementById('calStudent');
+    if (!studentSel) return;
+    const students = getAllStudents();
+    studentSel.innerHTML = students.map(s => '<option value="' + s.id + '">' + s.name + '</option>').join('');
+    const monthSel = document.getElementById('calMonth');
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const now = new Date();
+    monthSel.innerHTML = months.map((m, i) => '<option value="' + i + '" ' + (i === now.getMonth() ? 'selected' : '') + '>' + m + '</option>').join('');
+  }
+
+  window.renderCalendar = function() {
+    const container = document.getElementById('calendarBody');
+    if (!container) return;
+    const students = getAllStudents();
+    const sid = document.getElementById('calStudent').value;
+    const month = parseInt(document.getElementById('calMonth').value);
+    const student = students.find(s => s.id === sid);
+    if (!student) { container.innerHTML = '<p style="color:var(--chalk-dim);">Select a student.</p>'; return; }
+
+    const year = new Date().getFullYear();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+
+    let html = '<div style="font-size:14px;color:var(--chalk-white);margin-bottom:8px;font-weight:600;">' + student.name + '</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;max-width:300px;text-align:center;font-size:12px;">';
+    html += ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => '<div style="color:var(--chalk-dim);padding:4px;">' + d + '</div>').join('');
+
+    for (let i = 0; i < firstDay; i++) html += '<div></div>';
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = year + '-' + String(month + 1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+      const day = student.days ? student.days.find(x => x.date === dateStr) : null;
+      const present = day ? day.present : null;
+      const color = present === true ? 'var(--pen-green)' : present === false ? 'var(--pen-red)' : 'var(--chalk-dim)';
+      const bg = present !== null ? 'rgba(255,255,255,0.05)' : 'transparent';
+      html += '<div style="padding:6px;border-radius:4px;background:' + bg + ';color:' + color + ';font-weight:' + (present !== null ? '600' : '400') + ';">' + d + '</div>';
+    }
+    html += '</div>';
+    container.innerHTML = html;
+  };
+
   // ── Export CSV ──
   window.exportCSV = function() {
     const students = getAllStudents();
@@ -1032,7 +1088,9 @@
     renderAlerts();
     renderSubjectAttendance();
     renderTrends();
-    renderSummaryStats();
+  renderSummaryStats();
+  populateCalendarSelects();
+  renderCalendar();
   };
 
   // ── Init ──
