@@ -288,6 +288,10 @@
   <header>
     <p class="eyebrow">BSCS &middot; Roll No. Register</p>
     <h1><i class="fa-solid fa-book-open" style="font-size:36px;margin-right:8px;opacity:0.7;"></i>Attendance Register</h1>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+      <button class="btn btn-chalk btn-sm" onclick="exportCSV()"><i class="fa-solid fa-download"></i> CSV</button>
+      <button class="btn btn-chalk btn-sm" onclick="bulkMark()"><i class="fa-solid fa-check-double"></i> Bulk</button>
+    </div>
     <p class="subtitle">Mark it, track it, keep the roll honest.</p>
   </header>
 
@@ -373,7 +377,7 @@
     <div id="analyticsBody" style="margin-top:16px;"></div>
   </div>
 
-  <!-- Top Students -->
+  <!-- Top Students & Alerts -->
   <hr class="chalk-rule">
   <div class="card" style="margin-top:20px;">
     <h2><i class="fa-solid fa-trophy"></i> Top Students</h2>
@@ -386,6 +390,14 @@
     <h2><i class="fa-solid fa-triangle-exclamation"></i> Attendance Alerts</h2>
     <p style="font-size:13px;color:var(--chalk-dim);margin-top:4px;">Students below 75% attendance rate</p>
     <div id="alertsBody" style="margin-top:12px;"></div>
+  </div>
+
+  <!-- Attendance Trends -->
+  <hr class="chalk-rule">
+  <div class="card" style="margin-top:20px;">
+    <h2><i class="fa-solid fa-chart-line"></i> Attendance Trends</h2>
+    <p style="font-size:13px;color:var(--chalk-dim);margin-top:4px;">Last 7 days sparkline per student</p>
+    <div id="trendsBody" style="margin-top:12px;"></div>
   </div>
 
   <!-- Subject Attendance -->
@@ -918,13 +930,69 @@
       '</tbody></table>';
   }
 
-  // update existing render to include new sections
-  const origRender = window.render || function(){};
+  // ── Export CSV ──
+  window.exportCSV = function() {
+    const students = getAllStudents();
+    let csv = 'ID,Name,Present Days,Total Days,Rate\n';
+    students.forEach(s => {
+      const total = s.days ? s.days.length : 0;
+      const present = s.days ? s.days.filter(d => d.present).length : 0;
+      const rate = total ? (present/total*100).toFixed(1) : '0.0';
+      csv += s.id + ',' + s.name + ',' + present + ',' + total + ',' + rate + '%\n';
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'attendance-' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+    toast('CSV exported');
+  };
+
+  // ── Bulk Mark ──
+  let bulkMode = false;
+  window.bulkMark = function() {
+    bulkMode = !bulkMode;
+    if (bulkMode) {
+      const d = document.getElementById('dateDisplay');
+      toast('Click student rows to toggle. Click Bulk again to apply.');
+    }
+    const students = getAllStudents();
+    students.forEach(s => {
+      const today = new Date().toISOString().slice(0,10);
+      if (!s.days) s.days = [];
+      let day = s.days.find(d => d.date === today);
+      if (!day) { day = { date: today, present: bulkMode }; s.days.push(day); }
+      else day.present = bulkMode;
+    });
+    localStorage.setItem(dbKey, JSON.stringify(students));
+    render();
+    if (!bulkMode) toast('Bulk ' + (bulkMode ? 'present' : 'absent') + ' applied');
+  };
+
+  // ── Attendance Trend (sparkline bars per student) ──
+  function renderTrends() {
+    const container = document.getElementById('trendsBody');
+    if (!container) return;
+    const students = getAllStudents();
+    if (!students.length) { container.innerHTML = '<p style="color:var(--chalk-dim);">No data yet.</p>'; return; }
+    container.innerHTML = '<table><thead><tr><th>Student</th><th>Last 7 Days</th><th>Rate</th></tr></thead><tbody>' +
+      students.slice(0,10).map(s => {
+        const days = s.days || [];
+        const last7 = days.slice(-7);
+        const present = last7.filter(d => d.present).length;
+        const bars = last7.map(d => '<div style="width:12px;height:' + (d.present ? 20 : 6) + 'px;background:' + (d.present ? 'var(--pen-green)' : 'var(--pen-red)') + ';border-radius:2px;display:inline-block;margin-right:2px;vertical-align:bottom;"></div>').join('');
+        return '<tr><td>' + s.name + '</td><td style="display:flex;align-items:flex-end;gap:1px;padding-top:14px;">' + bars + '</td><td style="color:' + (present/7*100 >= 75 ? 'var(--pen-green)' : 'var(--pen-red)') + ';">' + Math.round(present/7*100) + '%</td></tr>';
+      }).join('') +
+      '</tbody></table>';
+  }
+
+  const origRender2 = window.render || function(){};
   window.render = function() {
-    if (typeof origRender === 'function') origRender();
+    if (typeof origRender2 === 'function') origRender2();
     renderTopStudents();
     renderAlerts();
     renderSubjectAttendance();
+    renderTrends();
   };
 
   // ── Init ──
@@ -934,6 +1002,7 @@
   renderTopStudents();
   renderAlerts();
   renderSubjectAttendance();
+  renderTrends();
 })();
 </script>
 
