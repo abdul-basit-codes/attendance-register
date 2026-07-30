@@ -400,6 +400,13 @@
     <div id="trendsBody" style="margin-top:12px;"></div>
   </div>
 
+  <!-- Summary Stats -->
+  <hr class="chalk-rule">
+  <div class="card" style="margin-top:20px;">
+    <h2><i class="fa-solid fa-chart-pie"></i> Summary Stats</h2>
+    <div id="summaryStatsBody" style="margin-top:12px;"></div>
+  </div>
+
   <!-- Subject Attendance -->
   <hr class="chalk-rule">
   <div class="card" style="margin-top:20px;">
@@ -969,6 +976,38 @@
     if (!bulkMode) toast('Bulk ' + (bulkMode ? 'present' : 'absent') + ' applied');
   };
 
+  // ── Summary Stats ──
+  function renderSummaryStats() {
+    const container = document.getElementById('summaryStatsBody');
+    if (!container) return;
+    const students = getAllStudents();
+    const total = students.length;
+    if (!total) { container.innerHTML = '<p style="color:var(--chalk-dim);">No students yet.</p>'; return; }
+
+    let totalPresent = 0, totalDays = 0, bestRate = 0, worstRate = 100;
+    students.forEach(s => {
+      const days = s.days || [];
+      const p = days.filter(d => d.present).length;
+      totalPresent += p;
+      totalDays += days.length;
+      const rate = days.length ? (p / days.length * 100) : 0;
+      if (rate > bestRate) bestRate = rate;
+      if (rate < worstRate && days.length) worstRate = rate;
+    });
+
+    const overallRate = totalDays ? (totalPresent / totalDays * 100).toFixed(1) : '0.0';
+    const above75 = students.filter(s => { const d = s.days||[]; return d.length && (d.filter(x=>x.present).length/d.length*100) >= 75; }).length;
+
+    container.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">' +
+      '<div class="stat-pill" style="text-align:center;"><div style="font-size:28px;font-weight:700;color:var(--pen-green)">' + totalPresent + '</div><div style="font-size:12px;color:var(--chalk-dim);">Total Present</div></div>' +
+      '<div class="stat-pill" style="text-align:center;"><div style="font-size:28px;font-weight:700;color:var(--chalk-white)">' + totalDays + '</div><div style="font-size:12px;color:var(--chalk-dim);">Total Days</div></div>' +
+      '<div class="stat-pill" style="text-align:center;"><div style="font-size:28px;font-weight:700;color:var(--pen-green)">' + overallRate + '%</div><div style="font-size:12px;color:var(--chalk-dim);">Overall Rate</div></div>' +
+      '<div class="stat-pill" style="text-align:center;"><div style="font-size:28px;font-weight:700;color:var(--pen-green)">' + bestRate.toFixed(0) + '%</div><div style="font-size:12px;color:var(--chalk-dim);">Best Rate</div></div>' +
+      '<div class="stat-pill" style="text-align:center;"><div style="font-size:28px;font-weight:700;color:var(--pen-red)">' + (worstRate === 100 ? '0' : worstRate.toFixed(0)) + '%</div><div style="font-size:12px;color:var(--chalk-dim);">Worst Rate</div></div>' +
+      '<div class="stat-pill" style="text-align:center;"><div style="font-size:28px;font-weight:700;color:var(--chalk-yellow)">' + above75 + '/' + total + '</div><div style="font-size:12px;color:var(--chalk-dim);">Above 75%</div></div>' +
+      '</div>';
+  }
+
   // ── Attendance Trend (sparkline bars per student) ──
   function renderTrends() {
     const container = document.getElementById('trendsBody');
@@ -993,6 +1032,7 @@
     renderAlerts();
     renderSubjectAttendance();
     renderTrends();
+    renderSummaryStats();
   };
 
   // ── Init ──
@@ -1003,6 +1043,7 @@
   renderAlerts();
   renderSubjectAttendance();
   renderTrends();
+  renderSummaryStats();
 })();
 </script>
 
