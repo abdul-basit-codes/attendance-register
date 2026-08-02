@@ -385,6 +385,14 @@
     <div id="todaySummaryBody" style="margin-top:12px;"></div>
   </div>
 
+  <!-- Streaks & Consistency -->
+  <hr class="chalk-rule">
+  <div class="card" style="margin-top:20px;">
+    <h2><i class="fa-solid fa-fire"></i> Streaks &amp; Consistency</h2>
+    <p style="font-size:13px;color:var(--chalk-dim);margin-top:4px;">Current attendance streaks and most consistent students</p>
+    <div id="streaksBody" style="margin-top:12px;"></div>
+  </div>
+
   <!-- Top Students & Alerts -->
   <hr class="chalk-rule">
   <div class="card" style="margin-top:20px;">
@@ -746,6 +754,7 @@
     }).join('');
 
     renderTodaySummary();
+    renderStreaks();
   };
 
   // ── Keyboard shortcuts ──
@@ -802,6 +811,64 @@
     } else if (present > 0) {
       html += '<p style="font-size:13px;color:var(--pen-green);"><i class="fa-solid fa-circle-check"></i> Everyone present today!</p>';
     }
+    container.innerHTML = html;
+  }
+
+  // ── Streaks & Consistency ──
+  function getCurrentStreak(s) {
+    const dates = Object.keys(s.dates || {}).sort();
+    if (!dates.length) return 0;
+    // build set of present days
+    const presentDays = new Set();
+    dates.forEach(d => { if (s.dates[d] === 1) presentDays.add(d); });
+    let streak = 0;
+    const d = new Date();
+    // count backwards from today (allow today unmarked)
+    let cursor = d;
+    for (let i = 0; i < 400; i++) {
+      const key = cursor.getFullYear() + '-' + String(cursor.getMonth()+1).padStart(2,'0') + '-' + String(cursor.getDate()).padStart(2,'0');
+      if (presentDays.has(key)) { streak++; cursor.setDate(cursor.getDate() - 1); }
+      else {
+        // stop if today is simply not recorded yet
+        if (i === 0) { cursor.setDate(cursor.getDate() - 1); continue; }
+        break;
+      }
+    }
+    return streak;
+  }
+
+  function renderStreaks() {
+    const container = document.getElementById('streaksBody');
+    if (!container) return;
+    if (!students.length) { container.innerHTML = '<p style="color:var(--chalk-dim);">No students yet.</p>'; return; }
+
+    const rows = students.map(s => {
+      const dates = Object.keys(s.dates || {}).sort();
+      const totalDays = dates.length;
+      const present = getTotalPresent(s);
+      const rate = totalDays ? Math.round(present / totalDays * 100) : 0;
+      return { s, streak: getCurrentStreak(s), rate, totalDays };
+    });
+
+    const sortedByRate = rows.slice().sort((a, b) => b.rate - a.rate || b.streak - a.streak);
+    const top3 = sortedByRate.filter(r => r.totalDays > 0).slice(0, 3);
+
+    let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;">';
+    html += '<div style="text-align:center;padding:12px;border:1px solid var(--chalk-dim);border-radius:6px;"><div style="font-size:24px;color:var(--chalk-yellow);font-weight:700;">' + rows.filter(r => r.streak >= 3).length + '</div><div style="font-size:11px;color:var(--chalk-dim);">Students on 3+ Day Streak</div></div>';
+    html += '<div style="text-align:center;padding:12px;border:1px solid var(--chalk-dim);border-radius:6px;"><div style="font-size:24px;color:var(--pen-green);font-weight:700;">' + rows.filter(r => r.totalDays > 0 && r.rate === 100).length + '</div><div style="font-size:11px;color:var(--chalk-dim);">Perfect Attendance</div></div>';
+    html += '<div style="text-align:center;padding:12px;border:1px solid var(--chalk-dim);border-radius:6px;"><div style="font-size:24px;color:var(--pen-red);font-weight:700;">' + rows.filter(r => r.totalDays > 0 && r.rate < 75).length + '</div><div style="font-size:11px;color:var(--chalk-dim);">Below 75% Rate</div></div>';
+    html += '</div>';
+
+    if (top3.length) {
+      html += '<p style="font-size:13px;color:var(--chalk-dim);margin-bottom:8px;"><i class="fa-solid fa-crown"></i> Most consistent students</p><table style="width:100%;"><thead><tr><th>Student</th><th>Rate</th><th>Streak</th><th>Days</th></tr></thead><tbody>' +
+        top3.map(r => '<tr><td>' + escapeHtml(r.s.name) + '</td><td style="color:var(--pen-green);">' + r.rate + '%</td><td style="color:var(--chalk-yellow);">' + r.streak + ' days</td><td>' + r.totalDays + '</td></tr>').join('') +
+        '</tbody></table>';
+    }
+
+    html += '<p style="font-size:13px;color:var(--chalk-dim);margin:14px 0 8px;"><i class="fa-solid fa-fire"></i> Current streaks</p><table style="width:100%;"><thead><tr><th>Student</th><th>Current Streak</th></tr></thead><tbody>' +
+      rows.slice().sort((a, b) => b.streak - a.streak).slice(0, 8).map(r => '<tr><td>' + escapeHtml(r.s.name) + '</td><td style="color:var(--chalk-yellow);">' + r.streak + ' day' + (r.streak === 1 ? '' : 's') + '</td></tr>').join('') +
+      '</tbody></table>';
+
     container.innerHTML = html;
   }
 
