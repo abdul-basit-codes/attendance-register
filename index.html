@@ -377,6 +377,14 @@
     <div id="analyticsBody" style="margin-top:16px;"></div>
   </div>
 
+  <!-- Today's Summary -->
+  <hr class="chalk-rule">
+  <div class="card" style="margin-top:20px;">
+    <h2><i class="fa-solid fa-list-check"></i> Today's Summary</h2>
+    <p style="font-size:13px;color:var(--chalk-dim);margin-top:4px;">Roll call status for <span id="todaySummaryDate"></span></p>
+    <div id="todaySummaryBody" style="margin-top:12px;"></div>
+  </div>
+
   <!-- Top Students & Alerts -->
   <hr class="chalk-rule">
   <div class="card" style="margin-top:20px;">
@@ -736,6 +744,8 @@
         '</div></td>' +
       '</tr>';
     }).join('');
+
+    renderTodaySummary();
   };
 
   // ── Keyboard shortcuts ──
@@ -757,6 +767,43 @@
   document.getElementById('sid').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') document.getElementById('sname').focus();
   });
+
+  // ── Today's Summary ──
+  function renderTodaySummary() {
+    const container = document.getElementById('todaySummaryBody');
+    const dateLabel = document.getElementById('todaySummaryDate');
+    if (!container) return;
+    if (dateLabel) dateLabel.textContent = formatDate(currentDate);
+    if (!students.length) { container.innerHTML = '<p style="color:var(--chalk-dim);">No students yet.</p>'; return; }
+
+    let present = 0, absent = 0, unmarked = 0;
+    const absentees = [];
+    students.forEach(s => {
+      const st = getTodayStatus(s);
+      if (st === true) present++;
+      else if (st === false) { absent++; absentees.push(s); }
+      else unmarked++;
+    });
+    const total = students.length;
+    const pct = total ? Math.round(present / total * 100) : 0;
+
+    let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;">';
+    html += '<div style="text-align:center;padding:12px;border:1px solid var(--chalk-dim);border-radius:6px;"><div style="font-size:24px;color:var(--chalk-yellow);font-weight:700;">' + present + '</div><div style="font-size:11px;color:var(--chalk-dim);">Present</div></div>';
+    html += '<div style="text-align:center;padding:12px;border:1px solid var(--chalk-dim);border-radius:6px;"><div style="font-size:24px;color:var(--pen-red);font-weight:700;">' + absent + '</div><div style="font-size:11px;color:var(--chalk-dim);">Absent</div></div>';
+    html += '<div style="text-align:center;padding:12px;border:1px solid var(--chalk-dim);border-radius:6px;"><div style="font-size:24px;color:var(--chalk-dim);font-weight:700;">' + unmarked + '</div><div style="font-size:11px;color:var(--chalk-dim);">Not Marked</div></div>';
+    html += '<div style="text-align:center;padding:12px;border:1px solid var(--chalk-dim);border-radius:6px;"><div style="font-size:24px;color:var(--pen-green);font-weight:700;">' + pct + '%</div><div style="font-size:11px;color:var(--chalk-dim);">Roll Completed</div></div>';
+    html += '</div>';
+
+    html += '<div style="height:10px;background:rgba(255,255,255,0.08);border-radius:5px;overflow:hidden;margin-bottom:16px;"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,var(--pen-green),var(--chalk-yellow));transition:width .4s;"></div></div>';
+
+    if (absentees.length) {
+      html += '<p style="font-size:13px;color:var(--pen-red);margin-bottom:8px;"><i class="fa-solid fa-user-xmark"></i> Absent today:</p><div style="display:flex;flex-wrap:wrap;gap:6px;">' +
+        absentees.map(s => '<span style="padding:4px 10px;border:1px solid var(--pen-red);border-radius:20px;font-size:12px;color:var(--pen-red);">' + escapeHtml(s.name) + '</span>').join('') + '</div>';
+    } else if (present > 0) {
+      html += '<p style="font-size:13px;color:var(--pen-green);"><i class="fa-solid fa-circle-check"></i> Everyone present today!</p>';
+    }
+    container.innerHTML = html;
+  }
 
   // ── Analytics ──
   window.showAnalytics = function() {
