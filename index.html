@@ -416,6 +416,14 @@
     <div id="alertsBody" style="margin-top:12px;"></div>
   </div>
 
+  <!-- Absence Streaks -->
+  <hr class="chalk-rule">
+  <div class="card" style="margin-top:20px;">
+    <h2><i class="fa-solid fa-calendar-xmark"></i> Absence Streaks</h2>
+    <p style="font-size:13px;color:var(--chalk-dim);margin-top:4px;">Students absent 3+ consecutive tracked days</p>
+    <div id="streakAlertsBody" style="margin-top:12px;"></div>
+  </div>
+
   <!-- Attendance Trends -->
   <hr class="chalk-rule">
   <div class="card" style="margin-top:20px;">
@@ -1045,6 +1053,47 @@
       '</tbody></table>';
   }
 
+  function getAllStudents() {
+    return students.map(s => {
+      const dates = s.dates || {};
+      const days = Object.keys(dates).map(d => ({ date: d, present: dates[d] === 1 }));
+      days.sort((a, b) => a.date.localeCompare(b.date));
+      return { ...s, days };
+    });
+  }
+
+  // ── Absence Streaks (3+ consecutive absences) ──
+  function renderStreakAlerts() {
+    const container = document.getElementById('streakAlertsBody');
+    if (!container) return;
+    const all = getAllStudents();
+    if (!all.length) { container.innerHTML = '<p style="color:var(--chalk-dim);">No students yet.</p>'; return; }
+
+    const flagged = [];
+    all.forEach(s => {
+      const days = (s.days || []).filter(d => d.date <= todayStr());
+      let run = 0;
+      for (let i = 0; i < days.length; ++i) {
+        if (!days[i].present) { run++; if (run === 3) flagged.push({ s, streak: run, lastDay: days[i].date }); }
+        else run = 0;
+      }
+      if (run >= 3) {
+        const existing = flagged.find(f => f.s.id === s.id);
+        if (existing) existing.streak = run;
+      }
+    });
+
+    if (!flagged.length) {
+      container.innerHTML = '<p style="color:var(--pen-green);"><i class="fa-solid fa-circle-check"></i> No students on absence streaks.</p>';
+      return;
+    }
+
+    container.innerHTML = flagged.map(f => {
+      const color = f.streak >= 5 ? 'var(--pen-red)' : 'var(--chalk-yellow)';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-left:3px solid ' + color + ';margin-bottom:6px;background:rgba(255,255,255,0.03);border-radius:0 4px 4px 0;"><span>' + f.s.name + ' <span style="font-size:11px;color:var(--chalk-dim);">(absent since ' + f.lastDay + ')</span></span><span style="color:' + color + ';font-weight:600;">' + f.streak + ' days</span></div>';
+    }).join('');
+  }
+
   function renderAlerts() {
     const container = document.getElementById('alertsBody');
     if (!container) return;
@@ -1233,6 +1282,7 @@
     if (typeof origRender2 === 'function') origRender2();
     renderTopStudents();
     renderAlerts();
+    renderStreakAlerts();
     renderSubjectAttendance();
     renderTrends();
   renderSummaryStats();
@@ -1246,6 +1296,7 @@
   renderAnnouncements();
   renderTopStudents();
   renderAlerts();
+  renderStreakAlerts();
   renderSubjectAttendance();
   renderTrends();
   renderSummaryStats();
