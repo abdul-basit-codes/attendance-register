@@ -329,6 +329,14 @@
     <button class="btn btn-outline" onclick="goToToday()" style="font-size:11px;">Today</button>
   </div>
 
+  <!-- Daily note -->
+  <div class="daily-note" style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+    <i class="fa-solid fa-note-sticky" style="color:var(--chalk-dim);"></i>
+    <input type="text" id="dailyNoteInput" placeholder="Note for this day (e.g. holiday, field trip)..." style="flex:1;min-width:200px;padding:8px 10px;background:transparent;border:1px solid var(--chalk-dim);color:var(--chalk);border-radius:4px;font-family:'Kalam';">
+    <button class="btn btn-chalk btn-sm" onclick="saveDailyNote()"><i class="fa-solid fa-save"></i> Save</button>
+    <span id="dailyNoteView" style="font-size:13px;color:var(--pen-green);"></span>
+  </div>
+
   <!-- Toolbar -->
   <div class="toolbar">
     <div style="display:flex;align-items:baseline;gap:12px;">
@@ -693,6 +701,30 @@
     setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 2500);
   }
 
+  // ── Daily Notes ──
+  function getDailyNotes() {
+    const stored = localStorage.getItem('dailyNotes');
+    return stored ? JSON.parse(stored) : {};
+  }
+  function renderDailyNote() {
+    const view = document.getElementById('dailyNoteView');
+    const input = document.getElementById('dailyNoteInput');
+    if (!view || !input) return;
+    const notes = getDailyNotes();
+    const note = notes[currentDate];
+    if (note) { view.textContent = '📌 ' + note; input.value = note; }
+    else { view.textContent = ''; input.value = ''; }
+  }
+  window.saveDailyNote = function() {
+    const input = document.getElementById('dailyNoteInput');
+    const notes = getDailyNotes();
+    if (input.value.trim()) notes[currentDate] = input.value.trim();
+    else delete notes[currentDate];
+    localStorage.setItem('dailyNotes', JSON.stringify(notes));
+    renderDailyNote();
+    toast('Note saved for ' + currentDate);
+  };
+
   // ── Render ──
   window.render = function() {
     const tbody = document.getElementById('rollBody');
@@ -701,6 +733,7 @@
     const query = (document.getElementById('searchInput').value || '').toLowerCase();
 
     document.getElementById('dateDisplay').textContent = formatDate(currentDate);
+    renderDailyNote();
 
     const filtered = students.filter(s => {
       if (!query) return true;
