@@ -468,6 +468,14 @@
     <div id="calendarBody" style="margin-top:12px;"></div>
   </div>
 
+  <!-- Attendance Ledger -->
+  <hr class="chalk-rule">
+  <div class="card" style="margin-top:20px;">
+    <h2><i class="fa-solid fa-book-open"></i> Attendance Ledger</h2>
+    <p style="font-size:13px;color:var(--chalk-dim);margin-top:4px;">Day-by-day register — present and absent counts per date</p>
+    <div id="ledgerBody" style="margin-top:12px;"></div>
+  </div>
+
   <!-- Class Timetable -->
   <hr class="chalk-rule">
   <div class="card" style="margin-top:20px;">
@@ -1327,6 +1335,36 @@
       '<p style="font-size:11px;color:var(--chalk-dim);margin-top:4px;text-align:center;">Bar height = average attendance rate; empty days have no records yet.</p>';
   }
 
+  // ── Attendance Ledger (day-by-day register) ──
+  function renderLedger() {
+    const container = document.getElementById('ledgerBody');
+    if (!container) return;
+    const all = getAllStudents();
+    if (!all.length) { container.innerHTML = '<p style="color:var(--chalk-dim);">No data yet.</p>'; return; }
+
+    const dayMap = {};
+    all.forEach(s => {
+      (s.days || []).forEach(d => {
+        if (!dayMap[d.date]) dayMap[d.date] = { present: 0, absent: 0 };
+        if (d.present) dayMap[d.date].present++;
+        else dayMap[d.date].absent++;
+      });
+    });
+
+    const dates = Object.keys(dayMap).sort().reverse();
+    if (!dates.length) { container.innerHTML = '<p style="color:var(--chalk-dim);">No tracked days yet.</p>'; return; }
+
+    const rows = dates.slice(0, 30).map(d => {
+      const r = dayMap[d];
+      const total = r.present + r.absent;
+      const rate = total ? (r.present / total * 100) : 0;
+      return '<tr><td>' + d + '</td><td style="color:var(--pen-green);font-weight:600;">' + r.present + '</td><td style="color:var(--pen-red);font-weight:600;">' + r.absent + '</td><td>' + total + '</td><td><div style="display:flex;align-items:center;gap:6px;"><div style="width:60px;height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;"><div style="width:' + rate.toFixed(0) + '%;height:100%;background:' + (rate >= 75 ? 'var(--pen-green)' : rate >= 50 ? 'var(--chalk-yellow)' : 'var(--pen-red)') + ';"></div></div><span style="font-size:11px;color:' + (rate >= 75 ? 'var(--pen-green)' : 'var(--pen-red)') + ';">' + rate.toFixed(0) + '%</span></div></td></tr>';
+    }).join('');
+
+    container.innerHTML = '<table style="width:100%;"><thead><tr><th>Date</th><th>Present</th><th>Absent</th><th>Roll</th><th>Rate</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      (dates.length > 30 ? '<p style="font-size:11px;color:var(--chalk-dim);margin-top:8px;">Showing latest 30 of ' + dates.length + ' tracked days.</p>' : '');
+  }
+
   const origRender2 = window.render || function(){};
   window.render = function() {
     if (typeof origRender2 === 'function') origRender2();
@@ -1336,6 +1374,7 @@
     renderSubjectAttendance();
     renderTrends();
   renderWeekdayPattern();
+  renderLedger();
   renderSummaryStats();
   populateCalendarSelects();
   renderCalendar();
@@ -1351,6 +1390,7 @@
   renderSubjectAttendance();
   renderTrends();
   renderWeekdayPattern();
+  renderLedger();
   renderSummaryStats();
 })();
 </script>
