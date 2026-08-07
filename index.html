@@ -439,6 +439,14 @@
     <div id="summaryStatsBody" style="margin-top:12px;"></div>
   </div>
 
+  <!-- Weekday Attendance Pattern -->
+  <hr class="chalk-rule">
+  <div class="card" style="margin-top:20px;">
+    <h2><i class="fa-solid fa-calendar-week"></i> Weekday Attendance Pattern</h2>
+    <p style="font-size:13px;color:var(--chalk-dim);margin-top:4px;">Average attendance rate by day of the week</p>
+    <div id="weekdayPatternBody" style="margin-top:12px;"></div>
+  </div>
+
   <!-- Subject Attendance -->
   <hr class="chalk-rule">
   <div class="card" style="margin-top:20px;">
@@ -1277,6 +1285,48 @@
       '</tbody></table>';
   }
 
+  // ── Weekday Attendance Pattern ──
+  function renderWeekdayPattern() {
+    const container = document.getElementById('weekdayPatternBody');
+    if (!container) return;
+    const all = getAllStudents();
+    if (!all.length) { container.innerHTML = '<p style="color:var(--chalk-dim);">No data yet.</p>'; return; }
+
+    const weekdayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const stats = weekdayNames.map(() => ({ present: 0, total: 0 }));
+    all.forEach(s => {
+      (s.days || []).forEach(d => {
+        const wd = new Date(d.date + 'T00:00:00').getDay();
+        stats[wd].total++;
+        if (d.present) stats[wd].present++;
+      });
+    });
+
+    const maxTotal = Math.max(...stats.map(x => x.total), 1);
+    let best = -1, bestRate = -1;
+    stats.forEach((x, i) => {
+      const rate = x.total ? (x.present / x.total * 100) : 0;
+      if (x.total && rate > bestRate) { bestRate = rate; best = i; }
+    });
+
+    const bars = stats.map((x, i) => {
+      const rate = x.total ? (x.present / x.total * 100) : 0;
+      const h = Math.round(rate);
+      const color = rate >= 75 ? 'var(--pen-green)' : rate >= 50 ? 'var(--chalk-yellow)' : 'var(--pen-red)';
+      const heightPct = x.total ? Math.max(4, Math.round(h / 100 * 120)) : 4;
+      return '<div style="flex:1;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:56px;">' +
+        '<div style="font-size:12px;color:' + color + ';font-weight:600;margin-bottom:4px;">' + (x.total ? h.toFixed(0) + '%' : '—') + '</div>' +
+        '<div style="width:70%;height:' + heightPct + 'px;background:' + color + ';opacity:' + (x.total ? 0.9 : 0.2) + ';border-radius:3px 3px 0 0;"></div>' +
+        '<div style="font-size:11px;color:var(--chalk-dim);margin-top:6px;">' + weekdayNames[i].slice(0,3) + '</div>' +
+        '<div style="font-size:10px;color:var(--chalk-dim);opacity:.7;">' + x.present + '/' + x.total + '</div>' +
+        '</div>';
+    }).join('');
+
+    container.innerHTML = '<div style="display:flex;gap:4px;align-items:flex-end;justify-content:center;padding-top:6px;">' + bars + '</div>' +
+      (best >= 0 ? '<p style="font-size:12px;color:var(--chalk-dim);margin-top:12px;text-align:center;">Most attended day: <span style="color:var(--pen-green);font-weight:600;">' + weekdayNames[best] + '</span> (' + bestRate.toFixed(1) + '%)</p>' : '') +
+      '<p style="font-size:11px;color:var(--chalk-dim);margin-top:4px;text-align:center;">Bar height = average attendance rate; empty days have no records yet.</p>';
+  }
+
   const origRender2 = window.render || function(){};
   window.render = function() {
     if (typeof origRender2 === 'function') origRender2();
@@ -1285,6 +1335,7 @@
     renderStreakAlerts();
     renderSubjectAttendance();
     renderTrends();
+  renderWeekdayPattern();
   renderSummaryStats();
   populateCalendarSelects();
   renderCalendar();
@@ -1299,6 +1350,7 @@
   renderStreakAlerts();
   renderSubjectAttendance();
   renderTrends();
+  renderWeekdayPattern();
   renderSummaryStats();
 })();
 </script>
